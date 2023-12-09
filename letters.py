@@ -14,8 +14,9 @@ def get_key():
 class Grid:
     def __init__(self,word):
         self.word=word
-        self.nb_try=6
+        self.nb_try=6 # nb d'essais par grille
         self.current_try=0
+        self.position=1 #curseur indiquant la position de la prochaine lettre à écrire
         self.WIN=False
         self.LOSE=False
         self.line=[]
@@ -71,7 +72,7 @@ class Grid:
         -1 = erreur
         '''
         if(letter=='Enter'):
-            if(position==len(self.word)-1):
+            if(position==len(self.word)):
                 self.validated_word()
                 return 1
             else :
@@ -82,7 +83,8 @@ class Grid:
             self.grid[self.current_try][position-1]='.'
             return position-1
         elif(letter.upper() in ALPHABET):
-            if(position==len(self.word)-1):
+            print("position = {}, len(word)-1 = {} ".format(position,len(self.word)-1))
+            if(position==len(self.word)):
                 return -1
             self.grid[self.current_try][position]=letter.upper()
             return position+1
@@ -90,14 +92,14 @@ class Grid:
     
     
     def jeu(self):
-        position=1
         while not (self.WIN or self.LOSE):
+            pos_temp = self.position # variable pour sauvegarder la position courante
             self.display()
             letter=get_key()
-            position=self.write(letter,position)
-            while position==-1:
+            self.position=self.write(letter,self.position)
+            while self.position==-1:
                 letter=get_key()
-                position=self.write(letter,position)
+                self.position=self.write(letter,pos_temp)
         if self.WIN :
              print("win")
         else:
