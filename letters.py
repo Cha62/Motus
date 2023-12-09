@@ -2,6 +2,7 @@ import msvcrt
 import random as rd
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+DATABASE_PATH = "Data\Dictionnaire.txt"
 
 def get_key():
     key = msvcrt.getch()
@@ -31,6 +32,12 @@ def is_present(word,path):
     word = word.upper()+"\n"
     return(word in lines)
 
+def write_word(list):
+    word=""
+    for e in list:
+        word = word+e
+    return word
+
 class Grid:
     def __init__(self,word):
         self.word=word
@@ -54,7 +61,25 @@ class Grid:
                 print(self.grid[i][j],end='|')
             print('\n_______________')
 
+    def check_word(self): #peut être amliorée
+        ''' 
+        check the right letters in the word\n
+        return 2 lists of indexes between 0 and len(word) :
+        ( list_wellplaced , list_misplaced )
+        '''
+        list_wellplaced = [] #liste contenant les indices avec la lettre exacte
+        list_misplaced = [] #liste contenant les indices avec une lettre qui est dans le mot mais mal placée
+        for i in range(len(self.word)):
+            if self.grid[self.current_try][i]==self.word[i]:
+                list_wellplaced.append(i)
+            elif(self.grid[self.current_try][i] in self.word) :
+                list_misplaced.append(i)
+        return ( list_wellplaced , list_misplaced )
+                
+
+
     def validated_word(self):
+        self.check_word()
         end = self.test_end()
         if end in [-1,1]:
             return end
@@ -93,9 +118,13 @@ class Grid:
         '''
         if(letter=='Enter'):
             if(position==len(self.word)):
+                if(not is_present(write_word(self.grid[self.current_try]),DATABASE_PATH)):
+                    print("this word doesn't exist, try another one...")
+                    return -1
                 self.validated_word()
                 return 1
             else :
+                print("this word is too short, try another one..")
                 return -1 #erreur
         elif(letter=='Back'):
             if position==1:
@@ -121,15 +150,11 @@ class Grid:
                 letter=get_key()
                 self.position=self.write(letter,pos_temp)
         if self.WIN :
-             print("win")
+             print("Victory !!")
         else:
-            print("lose")
+            print("Defeat ... The correct word was : {}".format(self.word))
 
 
 
-path="Data\Dictionnaire.txt"
-print(is_present("multiplia",path))
-
-"""
-jeu=Grid("BLABLA")
-jeu.jeu()"""
+jeu=Grid(select_word(DATABASE_PATH))
+jeu.jeu()
