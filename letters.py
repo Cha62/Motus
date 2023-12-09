@@ -1,4 +1,5 @@
 import msvcrt
+import random as rd
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -10,6 +11,25 @@ def get_key():
         return "Back"
     else:
         return key.decode()
+    
+def select_word(path):
+    """
+    pick a random word is in the DataBase located in path file
+    """
+    file = open(path)
+    lines = file.readlines()
+    file.close()
+    return lines[rd.randint(0,len(lines)-1)][0:-2]
+
+def is_present(word,path):
+    """
+    check if the word is in the DataBase located in path file
+    """
+    file = open(path)
+    lines = file.readlines()
+    file.close()
+    word = word.upper()+"\n"
+    return(word in lines)
 
 class Grid:
     def __init__(self,word):
@@ -106,6 +126,10 @@ class Grid:
             print("lose")
 
 
-            
+
+path="Data\Dictionnaire.txt"
+print(is_present("multiplia",path))
+
+"""
 jeu=Grid("BLABLA")
-jeu.jeu()
+jeu.jeu()"""
