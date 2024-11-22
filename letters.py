@@ -1,5 +1,7 @@
 import msvcrt
 import random as rd
+import tkinter as tk
+from tkinter import messagebox
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 DATABASE_PATH = "Data\Dictionnaire.txt"
@@ -20,7 +22,7 @@ def select_word(path):
     file = open(path)
     lines = file.readlines()
     file.close()
-    return lines[rd.randint(0,len(lines)-1)][0:-2]
+    return lines[rd.randint(0,len(lines)-1)][0:-1]
 
 def is_present(word,path):
     """
@@ -38,12 +40,14 @@ def write_word(list):
         word = word+e
     return word
 
-class Grid:
+class GridInterface:
     def __init__(self,word):
+        self.score=0
         self.word=word
         self.nb_try=6 # nb d'essais par grille
         self.current_try=0
         self.position=1 #curseur indiquant la position de la prochaine lettre à écrire
+        self.colors = ["grey", "orange", "green","lightgrey"]
         self.WIN=False
         self.LOSE=False
         self.line=[]
@@ -54,39 +58,107 @@ class Grid:
             self.grid.append(self.line)
             self.line=[]
         self.grid[0][0]=word[0]
-        
+        self.wd = self.create_window()
+        self.message_label = self.create_message_area()
+        self.display()
+
+    def create_window(self, width = 800):
+        wd = tk.Tk()
+        wd.title("Motus Game")
+        wd.config(background="lightblue")
+        height = 800 #63*len(self.word)
+        wd.geometry("{}x{}".format(height,width))
+        wd.bind("<Key>", self.action_clavier)
+        return wd
+    
+    def clear_interface(self):
+        for widget in self.wd.winfo_children():
+            widget.destroy()
+
+    def close_window(self):
+        print("Fin du jeu")
+        self.wd.destroy()
+        self.wd.quit()
+
+    def continue_prochain_mot(self):
+        self.WIN = False
+        self.current_try=0
+        self.position=1
+        self.word=select_word(DATABASE_PATH)
+        print(self.word)
+        self.clear_interface()
+        self.line=[]
+        self.grid=[]
+        for _ in range(self.nb_try):
+            for _ in range(len(self.word)):
+                self.line.append('.')
+            self.grid.append(self.line)
+            self.line=[]
+        self.grid[0][0]=self.word[0]
+        self.message_label = self.create_message_area()
+        self.display()
+
+        #self.wd.destroy()
+        #self.wd.quit()
+
     def display(self):
-        for i in range(self.nb_try):
+        for i in range(self.current_try,self.nb_try):
             for j in range(len(self.word)):
-                print(self.grid[i][j],end='|')
-            print('\n_______________')
+                label = tk.Label(self.wd,text = self.grid[i][j],width=3, height=2, font=("Arial", 24), relief="solid")
+                label.grid(row=i, column=j)
 
-    def check_word(self): #peut être amliorée
+    def creer_button(self, texte, commande):
+        return tk.Button(self.wd, text=texte, font=("Arial", 14, "bold"), bg="lightgrey", relief='raised',  command=commande)
+
+    def create_message_area(self):
+        """Crée une zone pour afficher les messages"""
+        label = tk.Label(self.wd, text=f"Tente de trouver le bon mot {self.position}", font=("Arial", 16), bg="lightblue")
+        label.grid(row=self.nb_try + 1, column=0, columnspan=len(self.word), sticky="w")
+        return label
+
+    def update_message(self, message):
+        """Met à jour le message affiché en bas de la fenêtre."""
+        if self.WIN : 
+            self.message_label.config(text=message, fg = "green")
+        elif self.LOSE: 
+            self.message_label.config(text=message, fg = "red")
+        else:
+            self.message_label.config(text=message, fg = "black")
+
+    def choose_color(self,line):
         ''' 
-        check the right letters in the word\n
-        return 2 lists of indexes between 0 and len(word) :
-        ( list_wellplaced , list_misplaced )
+        modifie les couleurs de la ligne line après que le mot soit validé
         '''
-        list_wellplaced = [] #liste contenant les indices avec la lettre exacte
-        list_misplaced = [] #liste contenant les indices avec une lettre qui est dans le mot mais mal placée
+        res = [0] * len(self.word)  
+        occurrences = {letter: self.word.count(letter) for letter in set(self.word)} # compteur de lettres dans le mot
+
+        # lettres bien placées
         for i in range(len(self.word)):
-            if self.grid[self.current_try][i]==self.word[i]:
-                list_wellplaced.append(i)
-            elif(self.grid[self.current_try][i] in self.word) :
-                list_misplaced.append(i)
-        return ( list_wellplaced , list_misplaced )
-                
+            if self.grid[line][i] == self.word[i]:
+                res[i] = 2
+                occurrences[self.word[i]] -= 1
+
+        # lettres présentes mais mal placées
+        for i in range(len(self.word)):
+            if res[i] == 0 and self.grid[line][i] in self.word:
+                letter = self.grid[line][i]
+                if occurrences[letter] > 0:
+                    res[i] = 1
+                    occurrences[letter] -= 1
+        
+        for k in range(len(res)):
+            label = tk.Label(self.wd, text=self.grid[line][k], width=3, height=2, font=("Arial", 24), relief="solid", background=self.colors[res[k]])
+            label.grid(row=line, column=k)
 
 
-    def validated_word(self):
-        self.check_word()
+    def validated_word(self): # lorsque le mot a été entré
         end = self.test_end()
         if end in [-1,1]:
             return end
+        self.choose_color(self.current_try)
         self.current_try+=1
         self.grid[self.current_try][0]=self.word[0]
         return 0 # The game continue
-
 
     def test_end(self):
         '''
@@ -100,61 +172,62 @@ class Grid:
                 return 0
             if self.grid[self.current_try][i]!=self.word[i]:
                 condition = False
-
         if condition :
             self.WIN = True
+            self.score += len(self.word) * (7-self.current_try)
+            self.update_message(f"Victory !! score actuel = {self.score}")
+            button = self.creer_button("Prochain mot", self.continue_prochain_mot)
+            button.grid(row=self.nb_try + 2, column=0, columnspan=len(self.word))
             return 1
         if self.current_try==self.nb_try-1:
             self.LOSE = True
+            self.update_message("Defeat ... The correct word was : {} \n Score final = {}".format(self.word, self.score))
+            button = self.creer_button("Quitter", self.close_window)
+            button.grid(row=self.nb_try + 2, column=0, columnspan=len(self.word))
             return -1
         else :
             return 0
-
+        
+    def action_clavier(self, event):
+        key = event.char.upper() if event.char.isalpha() else event.keysym
+        self.position = self.write(key, self.position)
+        self.display()
 
     def write(self,letter,position):
         '''
         return the new position of the letter in the word
         -1 = erreur
         '''
-        if(letter=='Enter'):
+        if(letter=='Return'):
             if(position==len(self.word)):
                 if(not is_present(write_word(self.grid[self.current_try]),DATABASE_PATH)):
-                    print("this word doesn't exist, try another one...")
-                    return -1
-                self.validated_word()
-                return 1
+                    self.update_message(f"This word doesn't exist,\n try another one... {position}")
+                    return position #erreur
+                self.validated_word()# == 0 à modifier + tard
+                res = 1
             else :
-                print("this word is too short, try another one..")
-                return -1 #erreur
-        elif(letter=='Back'):
+                self.update_message(f"This word is too short,\n try another one...{position}")
+                res = position #erreur
+        elif(letter=='BackSpace'):
             if position==1:
-                return -1
-            self.grid[self.current_try][position-1]='.'
-            return position-1
+                return 1
+            for i in range(position -1, len(self.word)):
+                self.grid[self.current_try][i] = '.'
+            res = position-1
         elif(letter.upper() in ALPHABET):
-            print("position = {}, len(word)-1 = {} ".format(position,len(self.word)-1))
-            if(position==len(self.word)):
-                return -1
+            if(position >= len(self.word)):
+                self.update_message(f"The maximum length has\n been reached, validate this\n word or try another one{position}")
+                self.grid[self.current_try][len(self.word)-1 ]=letter.upper()
+                return len(self.word)-1  #erreur
             self.grid[self.current_try][position]=letter.upper()
-            return position+1
-        return -1
-    
+            res = position+1
+        else :
+            res = position # erreur
+        return res
     
     def jeu(self):
-        while not (self.WIN or self.LOSE):
-            pos_temp = self.position # variable pour sauvegarder la position courante
-            self.display()
-            letter=get_key()
-            self.position=self.write(letter,self.position)
-            while self.position==-1:
-                letter=get_key()
-                self.position=self.write(letter,pos_temp)
-        if self.WIN :
-             print("Victory !!")
-        else:
-            print("Defeat ... The correct word was : {}".format(self.word))
+        print("Mot sélectionné :", self.word)
+        self.wd.mainloop()
 
-
-
-jeu=Grid(select_word(DATABASE_PATH))
+jeu=GridInterface(select_word(DATABASE_PATH))
 jeu.jeu()
